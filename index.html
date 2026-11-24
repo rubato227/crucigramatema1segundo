@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crucigrama Musical Correcto</title>
+    <style>
+        :root {
+            --cell-size: 38px;
+            --border-color: #4a5568;
+            --color-v: #2f855a; /* Verde para Verticales */
+            --color-h: #3182ce; /* Azul para Horizontales */
+        }
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: #edf2f7; /* Azul grisáceo pálido */
+            margin: 0;
+            padding: 20px;
+            color: #2d3748;
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 10px;
+            font-size: 1.8rem;
+            text-transform: uppercase;
+        }
+        .score-board {
+            text-align: center;
+            font-size: 1.2rem;
+            font-weight: bold;
+            margin-bottom: 20px;
+            background: #edf2f7;
+            padding: 10px 20px;
+            border-radius: 8px;
+            display: inline-block;
+            left: 50%;
+            transform: translateX(-50%);
+            position: relative;
+        }
+        .score-val {
+            color: #2b6cb0;
+        }
+        .bonus-val {
+            color: #2f855a;
+            font-size: 0.95rem;
+            margin-left: 15px;
+        }
+        .main-layout {
+    max-width: 1900px;
+    margin: 0 auto;
+    display: flex;
+    gap: 40px;
+    justify-content: center;
+    align-items: flex-start;
+    flex-wrap: nowrap;
+}
+        .grid-wrapper {
+            #2d3748; /* Color de fondo para las zonas muertas/vacías */
+            padding: 10px;
+            border-radius: 8px; /* Opcional: redondea las esquinas del tablero */
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(22, var(--cell-size));
+            grid-template-rows: repeat(22, var(--cell-size));
+            gap: 0px;
+        }
+        .cell {
+            width: var(--cell-size);
+            height: var(--cell-size);
+            background-color: transparent;
+            position: relative;
+            box-sizing: border-box;
+        }
+        .cell.white-cell {
+            background-color: white;
+            border: 1px solid var(--border-color);
+        }
+        .cell input {
+            width: 100%;
+            height: 100%;
+            border: none;
+            background: transparent;
+            text-align: center;
+            font-size: 16px;
+            font-weight: bold;
+            text-transform: uppercase;
+            outline: none;
+            color: #000000;
+            padding: 0;
+        }
+       .cell input.letra-h {
+    color: var(--color-h) !important; /* Azul para horizontales */
+}
+.cell input.letra-v {
+    color: var(--color-v) !important; /* Verde para verticales */
+}
+        .cell-number {
+            position: absolute;
+            top: 1px;
+            left: 3px;
+            font-size: 10px;
+            font-weight: bold;
+            pointer-events: none;
+            z-index: 10;
+        }
+        .cell-number.num-h { color: var(--color-h); }
+        .cell-number.num-v { color: var(--color-v); }
+
+        .clues-sidebar {
+            flex: 1;
+            min-width: 320px;
+            max-width: 480px;
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+        }
+        .clues-card h2 {
+            margin-top: 0;
+            font-size: 1.1rem;
+            text-transform: uppercase;
+            padding-bottom: 4px;
+            margin-bottom: 12px;
+        }
+        .card-h h2 { color: var(--color-h); border-bottom: 2px solid var(--color-h); }
+        .card-v h2 { color: var(--color-v); border-bottom: 2px solid var(--color-v); }
+
+        .clues-list {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        .clues-list li {
+            margin-bottom: 10px;
+            font-size: 0.9rem;
+            line-height: 1.4;
+            display: flex;
+        }
+        .clues-list li strong {
+            min-width: 24px;
+            display: inline-block;
+        }
+        .card-h .clues-list li strong { color: var(--color-h); }
+        .card-v .clues-list li strong { color: var(--color-v); }
+
+        .action-area {
+            width: 100%;
+            text-align: center;
+            margin-top: 30px;
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+        }
+        button {
+            padding: 10px 24px;
+            font-size: 15px;
+            font-weight: bold;
+            border-radius: 4px;
+            cursor: pointer;
+            border: 1px solid #cbd5e0;
+        }
+        .btn-primary {
+            background-color: #2b6cb0;
+            color: white;
+            border-color: #2b6cb0;
+        }
+        .btn-secondary {
+            background-color: #edf2f7;
+            color: #4a5568;
+        }
+
+        /* ESTILOS DE LA PANTALLA EMERGENTE (MODAL) */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .modal-box {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            max-width: 450px;
+            width: 90%;
+            text-align: center;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            transform: scale(0.8);
+            transition: transform 0.3s ease;
+        }
+        .modal-overlay.active .modal-box {
+            transform: scale(1);
+        }
+        .modal-box h3 {
+            margin-top: 0;
+            font-size: 1.6rem;
+            text-transform: uppercase;
+        }
+        .modal-box p {
+            font-size: 1.1rem;
+            line-height: 1.6;
+            margin: 15px 0;
+        }
+        .modal-details {
+            background: #f7fafc;
+            padding: 12px;
+            border-radius: 8px;
+            margin: 15px 0;
+            text-align: left;
+            font-size: 0.95rem;
+        }
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Crucigrama Tema 1: Antigüedad y Edad Media</h1>
+    
+    <div class="score-board">
+        Puntuación: <span id="score" class="score-val">0</span>
+        <span id="bonus-container" class="bonus-val">Bono de tiempo: <span id="bonus">1000</span></span>
+    </div>
+
+<div class="main-layout">
+
+    <!-- HORIZONTALES IZQUIERDA -->
+    <div class="clues-sidebar">
+
+        <div class="clues-card card-h">
+            <h2>Horizontales </h2>
+
+            <ul class="clues-list">
+
+<li><strong>1.</strong> 1.	Forma polifónica del Ars Antiqua compuesta sobre melodías de nueva creación y no sobre el gregoriano.</li>
+
+            <li><strong>2.</strong> Texto nuevo que se añadía a los melismas para convertir el canto en silábico.</li>
+
+            <li><strong>3.</strong> Estilo de canto florido con más de tres notas por sílaba.</li>
+
+            <li><strong>4.</strong> Instrumento de cuerda punteada de la Antigua Grecia asociado al culto a Apolo.</li>
+
+            <li><strong>5.</strong> Modo griego sobre la nota inicial Re en sentido descendente.</li>
+
+            <li><strong>6.</strong> Acompañamiento instrumental utilizado en Grecia y en la música de trovadores imitando o repitiendo partes de la melodía vocal.</li>
+
+            <li><strong>7.</strong> Textura primitiva de una sola línea melódica utilizada en Grecia y la Edad Media.</li>
+
+            <li><strong>8.</strong> Nombre que recibe la canción de trovadores en España.</li>
+
+            <li><strong>9.</strong> Estudiantes y frailes vagabundos que cantaban canciones profanas en latín.</li>
+
+            <li><strong>10.</strong> Diferentes escalas según la nota inicial utilizadas en Grecia y la Edad Media.</li>
+
+            <li><strong>11.</strong> Poeta y músico de origen noble que cantaba en su lengua al amor cortés y al espíritu caballeresco.</li>
+
+            <li><strong>12.</strong> Modo griego sobre la nota inicial Si en sentido descendente.</li>
+
+            <li><strong>13.</strong> Modo gregoriano con la nota Fa como final.</li>
+
+            <li><strong>14.</strong> Modo gregoriano con la nota Mi como final.</li>
+
+            <li><strong>15.</strong> Canción polifónica del Ars Nova en la que las voces interpretan la misma melodía pero con entradas sucesivas y en tiempos distintos.</li>
+
+
+            </ul>
+
+        </div>
+
+    </div>
+
+    <!-- CRUCIGRAMA CENTRO -->
+    <div class="grid-wrapper">
+
+        <div class="grid" id="crossword-grid"></div>
+
+    </div>
+
+    <!-- VERTICALES DERECHA -->
+    <div class="clues-sidebar">
+
+        <div class="clues-card card-v">
+
+            <h2>Verticales </h2>
+
+            <ul class="clues-list">
+
+                <li><strong>1.</strong> Forma polifónica del Ars Antiqua en la que las voces se mueven en ritmos distintos, cantando textos diferentes.</li>
+
+            <li><strong>2.</strong> Estilo de canto sencillo con una nota por sílaba.</li>
+
+            <li><strong>3.</strong> Sentimientos que provocaban las distintas escalas de los griegos y que también recogerán los modos gregorianos.</li>
+
+            <li><strong>4.</strong> Estilo de canto adornado con dos o tres notas por sílaba.</li>
+
+            <li><strong>5.</strong> Denominación genérica de algunas danzas medievales con frases que se repiten en final abierto y cerrado.</li>
+
+            <li><strong>6.</strong> Modo griego sobre la nota inicial Mi en sentido descendente.</li>
+
+            <li><strong>7.</strong> Modo griego sobre la nota inicial Do en sentido descendente.</li>
+
+            <li><strong>8.</strong> Textura de varias voces a la vez que surge a finales del s. IX con la intención de adornar el canto gregoriano.</li>
+
+            <li><strong>9.</strong> Músico ambulante que entretenía al público con canciones profanas.</li>
+
+            <li><strong>10.</strong> Manuscrito lujoso que recopilaba las canciones del trovador.</li>
+
+            <li><strong>11.</strong> Instrumento de viento con doble lengüeta de la Antigua Grecia asociado al culto a Dioniso.</li>
+
+            <li><strong>12.</strong> Este canto es la primera manifestación importante de música religiosa de la península.</li>
+
+            <li><strong>13.</strong> Canto cristiano unificado bajo el pontificado de Gregorio Magno.</li>
+
+            <li><strong>14.</strong> Modo gregoriano con la nota Re como final.</li>
+
+            <li><strong>15.</strong> Pies para medir las duraciones utilizados por Grecia y los músicos del Ars Antiqua.</li>
+
+            <li><strong>16.</strong> Notación para recordar el canto gregoriano.</li>
+
+
+            </ul>
+
+        </div>
+
+    </div>
+
+</div>
+
+    <div class="action-area">
+        <button class="btn-primary" onclick="checkCrossword()">Comprobar Respuestas</button>
+        <button class="btn-secondary" onclick="clearGrid()">Borrar Todo</button>
+    </div>
+
+    <!-- PANTALLA FINAL EMERGENTE (MODAL) -->
+    <div id="result-modal" class="modal-overlay">
+        <div class="modal-box">
+            <h3 id="modal-title">Título</h3>
+            <p id="modal-message">Mensaje informativo</p>
+            <div id="modal-extra" class="modal-details">Detalles</div>
+            <div class="modal-buttons">
+                <button class="btn-primary" id="modal-btn-action" onclick="closeModal()">Seguir Editando</button>
+                <button class="btn-secondary" onclick="clearGrid(); closeModal();">Reiniciar Juego</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+ 
+        const COLS = 22;
+        const ROWS = 22;
+
+        const words = [
+            // HORIZONTALES (Azules)
+    { text: "CONDUCTUS", r: 1, c: 7, dir: "H", num: "1", colorClass: "num-h" },
+    { text: "TROPO", r: 1, c: 17, dir: "H", num: "2", colorClass: "num-h" },
+    { text: "MELISMATICO", r: 2, c: 6, dir: "H", num: "3", colorClass: "num-h" },
+    { text: "LIRA", r: 3, c: 7, dir: "H", num: "4", colorClass: "num-h" },
+    { text: "FRIGIO", r: 3, c: 15, dir: "H", num: "5", colorClass: "num-h" },
+    { text: "HETEROFONICO", r: 4, c: 2, dir: "H", num: "6", colorClass: "num-h" },
+    { text: "MONODICA", r: 5, c: 7, dir: "H", num: "7", colorClass: "num-h" },
+    { text: "CANTIGA", r: 8, c: 0, dir: "H", num: "8", colorClass: "num-h" },
+    { text: "GOLIARDOS", r: 10, c: 5, dir: "H", num: "9", colorClass: "num-h" },
+    { text: "MODALES", r: 11, c: 15, dir: "H", num: "10", colorClass: "num-h" },
+    { text: "TROVADOR", r: 12, c: 9, dir: "H", num: "11", colorClass: "num-h" },
+    { text: "MIXOLIDIO", r: 13, c: 0, dir: "H", num: "12", colorClass: "num-h" },
+    { text: "TRITUS", r: 16, c: 4, dir: "H", num: "13", colorClass: "num-h" },
+    { text: "DEUTERUS", r: 18, c: 11, dir: "H", num: "14", colorClass: "num-h" },
+    { text: "CANON", r: 19, c: 7, dir: "H", num: "15", colorClass: "num-h" },
+            // VERTICALES (Verdes)
+    { text: "MOTETE", r: 13, c: 0, dir: "V", num: "1", colorClass: "num-v" },
+    { text: "SILABICO", r: 12, c: 1, dir: "V", num: "2", colorClass: "num-v" },
+    { text: "ETHOS", r: 2, c: 2, dir: "V", num: "3", colorClass: "num-v" },
+    { text: "NEUMATICO", r: 3, c: 3, dir: "V", num: "4", colorClass: "num-v" },
+    { text: "ESTAMPIE", r: 2, c: 4, dir: "V", num: "5", colorClass: "num-v" },
+    { text: "DORICO", r: 13, c: 6, dir: "V", num: "6", colorClass: "num-v" },
+    { text: "LIDIO", r: 10, c: 7, dir: "V", num: "7", colorClass: "num-v" },
+    { text: "POLIFONIA", r: 0, c: 8, dir: "V", num: "8", colorClass: "num-v" },
+    { text: "JUGLAR", r: 15, c: 8, dir: "V", num: "9", colorClass: "num-v" },
+    { text: "CANCIONERO", r: 1, c: 12, dir: "V", num: "10", colorClass: "num-v" },
+    { text: "AULOS", r: 5, c: 14, dir: "V", num: "11", colorClass: "num-v" },
+    { text: "MOZARABE", r: 11, c: 15, dir: "V", num: "12", colorClass: "num-v" },
+    { text: "GREGORIANO", r: 0, c: 18, dir: "V", num: "13", colorClass: "num-v" },
+    { text: "PROTUS", r: 1, c: 20, dir: "V", num: "14", colorClass: "num-v" },
+    { text: "METRICOS", r: 10, c: 20, dir: "V", num: "15", colorClass: "num-v" },
+    { text: "NEUMAS", r: 5, c: 21, dir: "V", num: "16", colorClass: "num-v" },
+
+];
+
+        const gridContainer = document.getElementById("crossword-grid");
+        const cellMap = {};
+        let currentDirection = "H"; 
+        
+        let score = 0;
+        let timeBonus = 1000;
+        let gameFinished = false;
+        let bonusInterval;
+
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+        function playTone(freq, type, duration) {
+            try {
+                const osc = audioCtx.createOscillator();
+                const gainNode = audioCtx.createGain();
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+                gainNode.gain.setValueAtTime(0.2, audioCtx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + duration);
+                osc.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+                osc.start();
+                osc.stop(audioCtx.currentTime + duration);
+            } catch (e) { console.log("Audio inactivo."); }
+        }
+
+        function playSuccessSound() {
+            playTone(523.25, "triangle", 0.15); 
+            setTimeout(() => playTone(659.25, "triangle", 0.15), 100); 
+            setTimeout(() => playTone(783.99, "triangle", 0.4), 200);  
+        }
+
+        function playErrorSound() {
+            playTone(220.00, "sawtooth", 0.3);
+        }
+
+        function startTimer() {
+            if(bonusInterval) clearInterval(bonusInterval);
+            timeBonus = 1000;
+            gameFinished = false;
+            document.getElementById("bonus").innerText = timeBonus;
+            
+            bonusInterval = setInterval(() => {
+                if (timeBonus > 0 && !gameFinished) {
+                    timeBonus--;
+                    document.getElementById("bonus").innerText = timeBonus;
+                }
+            }, 1000);
+        }
+
+        function generateGrid() {
+            gridContainer.innerHTML = "";
+            startTimer();
+            
+            for (let r = 0; r < ROWS; r++) {
+                for (let c = 0; c < COLS; c++) {
+                    const cellDiv = document.createElement("div");
+                    cellDiv.className = "cell";
+                    cellDiv.dataset.row = r;
+                    cellDiv.dataset.col = c;
+                    gridContainer.appendChild(cellDiv);
+                    cellMap[`${r},${c}`] = { el: cellDiv, numbers: [] };
+                }
+            }
+
+            words.forEach(word => {
+                let r = word.r;
+                let c = word.c;
+
+                for (let i = 0; i < word.text.length; i++) {
+                    const cellKey = `${r},${c}`;
+                    const cellObj = cellMap[cellKey];
+                    
+                    if (cellObj) {
+                        cellObj.el.classList.add("white-cell");
+                        
+                        let input = cellObj.el.querySelector("input");
+                        if (!input) {
+                            input = document.createElement("input");
+                            input.maxLength = 1;
+                            input.dataset.row = r;
+                            input.dataset.col = c;
+                            cellObj.el.appendChild(input);
+                        }
+                        
+                        if (!input.dataset.directions) {
+                            input.dataset.directions = word.dir;
+                        } else if (!input.dataset.directions.includes(word.dir)) {
+                            input.dataset.directions += "," + word.dir;
+                        }
+
+                        if (i === 0) {
+                            cellObj.numbers.push({ num: word.num, colorClass: word.colorClass });
+                        }
+                    }
+                    if (word.dir === "H") c++;
+                    if (word.dir === "V") r++;
+                }
+            });
+
+            for (const key in cellMap) {
+                const cellObj = cellMap[key];
+                if (cellObj.numbers.length > 0) {
+                    cellObj.numbers.forEach((n, idx) => {
+                        const numSpan = document.createElement("span");
+                        numSpan.className = `cell-number ${n.colorClass}`;
+                        numSpan.innerText = n.num;
+                        if (idx > 0) {
+                            numSpan.style.left = "auto";
+                            numSpan.style.right = "3px";
+                        }
+                        cellObj.el.appendChild(numSpan);
+                    });
+                }
+            }
+
+            setupNavigation();
+            setupSidebarClick();
+        }
+
+        function setupSidebarClick() {
+            document.querySelectorAll('.card-h .clues-list li').forEach(li => {
+                li.addEventListener('click', () => { currentDirection = "H"; });
+            });
+            document.querySelectorAll('.card-v .clues-list li').forEach(li => {
+                li.addEventListener('click', () => { currentDirection = "V"; });
+            });
+        }
+
+        function findNextInput(r, c, direction) {
+            let nextR = r;
+            let nextC = c;
+            if (direction === "H") nextC++;
+            else nextR++;
+            const nextCell = gridContainer.querySelector(`[data-row='${nextR}'][data-col='${nextC}'] input`);
+            if (!nextCell) return null;
+            return nextCell;
+        }
+
+        function setupNavigation() {
+            const inputs = gridContainer.querySelectorAll("input");
+            
+            inputs.forEach(input => {
+                input.addEventListener("click", (e) => {
+                    const allowedDirs = e.target.dataset.directions.split(",");
+                    if (allowedDirs.length === 1) {
+                        currentDirection = allowedDirs[0];
+                    }
+                });
+
+                input.addEventListener("input", (e) => {
+                    if (e.inputType === "deleteContentBackward" || !e.target.value) return;
+
+                    e.target.value = e.target.value.toUpperCase();
+
+                    const r = parseInt(e.target.dataset.row);
+                    const c = parseInt(e.target.dataset.col);
+                    
+                    const allowedDirs = e.target.dataset.directions.split(",");
+                    if (!allowedDirs.includes(currentDirection)) {
+                        currentDirection = allowedDirs[0];
+                    }
+
+                    // NUEVO: Quitar clases antiguas y aplicar el color según la dirección en la que escribe
+                    e.target.classList.remove("letra-h", "letra-v");
+                    if (currentDirection === "H") {
+                        e.target.classList.add("letra-h");
+                    } else {
+                        e.target.classList.add("letra-v");
+                    }
+
+                    const nextInput = findNextInput(r, c, currentDirection);
+                    if (nextInput) nextInput.focus();
+                });
+
+                input.addEventListener("keydown", (e) => {
+                    const r = parseInt(e.target.dataset.row);
+                    const c = parseInt(e.target.dataset.col);
+                    let targetInput = null;
+
+                    if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
+                        e.target.value = e.key.toUpperCase();
+                        
+                        const allowedDirs = e.target.dataset.directions.split(",");
+                        if (!allowedDirs.includes(currentDirection)) {
+                            currentDirection = allowedDirs[0];
+                        }
+
+                        // NUEVO: También aplica el color al sobrescribir casillas activas
+                        e.target.classList.remove("letra-h", "letra-v");
+                        if (currentDirection === "H") e.target.classList.add("letra-h");
+                        else e.target.classList.add("letra-v");
+                        
+                        const nextInput = findNextInput(r, c, currentDirection);
+                        if (nextInput) nextInput.focus();
+                        e.preventDefault();
+                        return;
+                    }
+
+                    switch(e.key) {
+                        case "ArrowRight":
+                            targetInput = gridContainer.querySelector(`[data-row='${r}'][data-col='${c + 1}'] input`);
+                            if(targetInput) currentDirection = "H";
+                            break;
+                        case "ArrowLeft":
+                            targetInput = gridContainer.querySelector(`[data-row='${r}'][data-col='${c - 1}'] input`);
+                            if(targetInput) currentDirection = "H";
+                            break;
+                        case "ArrowDown":
+                            targetInput = gridContainer.querySelector(`[data-row='${r + 1}'][data-col='${c}'] input`);
+                            if(targetInput) currentDirection = "V";
+                            break;
+                        case "ArrowUp":
+                            targetInput = gridContainer.querySelector(`[data-row='${r - 1}'][data-col='${c}'] input`);
+                            if(targetInput) currentDirection = "V";
+                            break;
+                        case "Backspace":
+                            if (!e.target.value) {
+                                if (currentDirection === "H") {
+                                    targetInput = gridContainer.querySelector(`[data-row='${r}'][data-col='${c - 1}'] input`);
+                                } else {
+                                    targetInput = gridContainer.querySelector(`[data-row='${r - 1}'][data-col='${c}'] input`);
+                                }
+                                if (targetInput) {
+                                    targetInput.focus();
+                                    targetInput.value = "";
+                                    e.preventDefault();
+                                }
+                            } else {
+                                e.target.value = "";
+                                e.target.classList.remove("letra-h", "letra-v"); // Limpia el color al borrar
+                                e.preventDefault();
+                            }
+                            break;
+                    }
+
+                    if (targetInput) {
+                        targetInput.focus();
+                    }
+                });
+            });
+        }
+
+        function showModal(title, msg, extra, isWin) {
+            document.getElementById("modal-title").innerText = title;
+            document.getElementById("modal-title").style.color = isWin ? "#2f855a" : "#e53e3e";
+            document.getElementById("modal-message").innerText = msg;
+            document.getElementById("modal-extra").innerHTML = extra;
+            const actionBtn = document.getElementById("modal-btn-action");
+            actionBtn.innerText = isWin ? "Cerrar" : "Revisar Errores";
+            document.getElementById("result-modal").classList.add("active");
+        }
+
+        document.getElementById("modal-btn-action").addEventListener("click", closeModal);
+
+        function closeModal() {
+            document.getElementById("result-modal").classList.remove("active");
+        }
+
+        function checkCrossword() {
+            if (audioCtx.state === 'suspended') { audioCtx.resume(); }
+
+            let allCorrect = true;
+            let currentScore = 0;
+            let totalCellsChecked = 0;
+            let errorsCount = 0;
+            let correctCount = 0;
+
+            words.forEach(word => {
+                let r = word.r;
+                let c = word.c;
+
+                for (let i = 0; i < word.text.length; i++) {
+                    const cell = gridContainer.querySelector(`[data-row='${r}'][data-col='${c}']`);
+                    const input = cell ? cell.querySelector("input") : null;
+                    if (input) {
+                        totalCellsChecked++;
+                        if (input.value.toUpperCase() === word.text[i]) {
+                            input.style.backgroundColor = "#c6f6d5"; 
+                            currentScore += 10;
+                            correctCount++;
+                        } else {
+                            input.style.backgroundColor = "#fed7d7"; 
+                            currentScore = Math.max(0, currentScore - 5);
+                            errorsCount++;
+                            allCorrect = false;
+                        }
+                    }
+                    if (word.dir === "H") c++;
+                    if (word.dir === "V") r++;
+                }
+            });
+
+            if (allCorrect && totalCellsChecked > 0) {
+                gameFinished = true;
+                score = currentScore + timeBonus;
+                document.getElementById("score").innerText = score;
+                playSuccessSound();
+                
+                showModal(
+                    "🏆 ¡Crucigrama Completado!",
+                    "Has resuelto todas las definiciones musicales sin ningún fallo.",
+                    `<strong>Aciertos:</strong> ${correctCount}<br><strong>Bono de velocidad:</strong> +${timeBonus} pts<br><hr style="border:none; border-top:1px solid #e2e8f0; margin:8px 0;"><strong>Puntuación Total:</strong> ${score} pts`,
+                    true
+                );
+            } else {
+                score = currentScore;
+                document.getElementById("score").innerText = score;
+                playErrorSound();
+
+                showModal(
+                    "❌ Hay casillas incorrectas",
+                    "Revisa los cuadros marcados en rojo claro para corregir los fallos de tus respuestas.",
+                    `<strong>Celdas correctas:</strong> ${correctCount}<br><strong>Errores detectados:</strong> ${errorsCount}<br><strong>Puntuación actual:</strong> ${score} pts`,
+                    false
+                );
+            }
+        }
+
+        function clearGrid() {
+            const inputs = gridContainer.querySelectorAll("input");
+            inputs.forEach(input => {
+                input.value = "";
+                input.style.backgroundColor = "transparent";
+                input.classList.remove("letra-h", "letra-v"); // Resetea los colores de las letras
+            });
+            startTimer();
+            score = 0;
+            document.getElementById("score").innerText = score;
+        }
+
+        generateGrid();
+    </script>
+    </script>
+</body>
+</html>
